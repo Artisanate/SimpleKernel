@@ -55,6 +55,7 @@ extern "C" {
 // 之所以需要单独管理 DMA 的物理页面，是因为 DMA 使用物理地址访问内存，
 // 不经过 MMU，并且需要连续的缓冲区，所以为了能够提供物理上连续的缓冲区，必须从物理地址空间专门划分一段区域用于DMA
 #define ZONE_DMA 0
+#define ZONE_DMA_ADDR        (0x0UL)
 // 16 MB
 #define ZONE_NORMAL_ADDR     (0x1000000UL)
 // ZONE_NORMAL	 16-896 MB	direct mapped by the kernel
@@ -121,7 +122,7 @@ extern ptr_t * kernel_data_end;
 extern ptr_t * kernel_end;
 
 extern multiboot_memory_map_entry_t * mmap_entries;
-extern multiboot_mmap_tag_t * mmap_tag;
+extern multiboot_tag_t * mmap_tag;
 
 // 内存管理结构体
 typedef
