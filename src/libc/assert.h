@@ -13,11 +13,11 @@ extern "C" {
 #include "stdio.h"
 
 #define assert(test, info) \
-	if(!(test) ) { \
-		printk_err(info); \
+    if(!(test) ) { \
+        printk_err(info); \
         __asm__ volatile ("cli" ::: "memory"); \
-		while(1) { }; \
-	}
+        while(1) { }; \
+    }
 
 #ifdef __cplusplus
 }

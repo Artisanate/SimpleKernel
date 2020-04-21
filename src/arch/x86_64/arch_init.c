@@ -14,16 +14,16 @@ extern "C" {
 #include "arch_init.h"
 
 void arch_init(void) {
-	bool intr_flag = false;
-	local_intr_store(intr_flag);
-	{
-		// GDT 初始化
-		gdt_init();
-		// IDT 初始化
-		intr_init();
-	}
-	local_intr_restore(intr_flag);
-	return;
+    bool intr_flag = false;
+    local_intr_store(intr_flag);
+    {
+        // GDT 初始化
+        gdt_init();
+        // IDT 初始化
+        intr_init();
+    }
+    local_intr_restore(intr_flag);
+    return;
 }
 
 #ifdef __cplusplus

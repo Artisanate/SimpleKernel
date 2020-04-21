@@ -20,9 +20,9 @@ extern "C" {
 
 typedef
     struct mouse_desc_t {
-	uint8_t		buf[3];
-	uint8_t		phase;
-	uint32_t	x, y, btn;
+    uint8_t		buf[3];
+    uint8_t		phase;
+    uint32_t		x, y, btn;
 } mouse_desc_t;
 
 #ifdef __cplusplus

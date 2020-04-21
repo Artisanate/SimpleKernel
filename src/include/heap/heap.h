@@ -21,18 +21,18 @@ extern "C" {
 // 堆管理结构体
 typedef
     struct heap_manage {
-	// 管理算法的名称
-	const char *      name;
-	// 初始化
-	void (* heap_manage_init)(ptr_t addr_start);
-	// 内存申请，单位为 Byte
-	ptr_t (* heap_manage_malloc)(size_t byte);
-	// 进程栈申请
-	ptr_t (* heap_manage_malloc_stack)(void);
-	// 释放内存
-	void (* heap_manage_free)(ptr_t addr);
-	// 释放栈内存
-	void (* heap_manage_free_stack)(ptr_t addr);
+    // 管理算法的名称
+    const char *      name;
+    // 初始化
+    void (* heap_manage_init)(ptr_t addr_start);
+    // 内存申请，单位为 Byte
+    ptr_t (* heap_manage_malloc)(size_t byte);
+    // 进程栈申请
+    ptr_t (* heap_manage_malloc_stack)(void);
+    // 释放内存
+    void (* heap_manage_free)(ptr_t addr);
+    // 释放栈内存
+    void (* heap_manage_free_stack)(ptr_t addr);
 } heap_manage_t;
 
 // 初始化堆

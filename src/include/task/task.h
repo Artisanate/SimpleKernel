@@ -27,16 +27,16 @@ extern "C" {
 // 进程状态描述
 typedef
     enum task_status {
-	// 未初始化
-	TASK_UNINIT = 0,
-	// 睡眠中
-	TASK_SLEEPING = 1,
-	// 可运行
-	TASK_RUNNABLE = 2,
-	// 正在运行
-	TASK_RUNNING = 3,
-	// 僵尸状态
-	TASK_ZOMBIE = 4,
+    // 未初始化
+    TASK_UNINIT = 0,
+    // 睡眠中
+    TASK_SLEEPING = 1,
+    // 可运行
+    TASK_RUNNABLE = 2,
+    // 正在运行
+    TASK_RUNNING = 3,
+    // 僵尸状态
+    TASK_ZOMBIE = 4,
 } task_status_t;
 
 // 内核线程的上下文切换保存的信息
@@ -50,58 +50,58 @@ typedef
 // The layout of the context must match the code in swtch.S.
 typedef
     struct task_context {
-	uint32_t	eip;
-	uint32_t	esp;
-	uint32_t	ebp;
-	uint32_t	ebx;
-	uint32_t	ecx;
-	uint32_t	edx;
-	uint32_t	esi;
-	uint32_t	edi;
+    uint32_t		eip;
+    uint32_t		esp;
+    uint32_t		ebp;
+    uint32_t		ebx;
+    uint32_t		ecx;
+    uint32_t		edx;
+    uint32_t		esi;
+    uint32_t		edi;
 } task_context_t;
 
 // 进程内存地址结构
 typedef
     struct task_mem {
-	// 进程页表
-	pgd_t *		pgd_dir;
-	// 栈顶
-	ptr_t		stack_top;
-	// 栈底
-	ptr_t		stack_bottom;
-	// 内存起点
-	ptr_t		task_start;
-	// 代码段起止
-	ptr_t		code_start;
-	ptr_t		code_end;
-	// 数据段起止
-	ptr_t		data_start;
-	ptr_t		data_end;
-	// 内存结束
-	ptr_t		task_end;
+    // 进程页表
+    pgd_t *		pgd_dir;
+    // 栈顶
+    ptr_t		stack_top;
+    // 栈底
+    ptr_t		stack_bottom;
+    // 内存起点
+    ptr_t		task_start;
+    // 代码段起止
+    ptr_t		code_start;
+    ptr_t		code_end;
+    // 数据段起止
+    ptr_t		data_start;
+    ptr_t		data_end;
+    // 内存结束
+    ptr_t		task_end;
 } task_mem_t;
 
 // 进程控制块 PCB
 typedef
     struct task_pcb {
-	// 任务状态
-	volatile task_status_t		status;
-	// 任务的 pid
-	pid_t pid;
-	// 任务名称
-	char * name;
-	// 当前任务运行时间
-	uint32_t run_time;
-	// 父进程指针
-	struct task_pcb *		parent;
-	// 任务的内存信息
-	task_mem_t * mm;
-	// 任务中断保存的寄存器信息
-	pt_regs_t * pt_regs;
-	// 任务切换上下文信息
-	task_context_t *		context;
-	// 任务的退出代码
-	int32_t	exit_code;
+    // 任务状态
+    volatile task_status_t		status;
+    // 任务的 pid
+    pid_t pid;
+    // 任务名称
+    char * name;
+    // 当前任务运行时间
+    uint32_t run_time;
+    // 父进程指针
+    struct task_pcb *			parent;
+    // 任务的内存信息
+    task_mem_t * mm;
+    // 任务中断保存的寄存器信息
+    pt_regs_t * pt_regs;
+    // 任务切换上下文信息
+    task_context_t *			context;
+    // 任务的退出代码
+    int32_t exit_code;
 } task_pcb_t;
 
 // 全部任务链表
@@ -159,55 +159,55 @@ void kkill();
 // 进程切换
 // task_pcb_t * switch_to(task_pcb_t * curr, task_pcb_t * next, task_pcb_t * last);
 #define switch_to(prev, next, last) \
-	do { \
-		uint32_t ebx, ecx, edx, esi, edi; \
-		__asm__ volatile ( \
-		"pushfl\n\t" \
-		"pushl %%ebp\n\t" \
-		"movl %%esp,%[prev_sp]\n\t" \
-		"movl %[next_sp],%%esp\n\t" \
-		"movl $1f,%[prev_ip]\n\t" \
-		"pushl %[next_ip]\n\t" \
-		"jmp __switch_to\n" \
-		"1:\n\t" \
-		"popl %%ebp\n\t" \
-		"popfl\n" \
-		:[prev_sp] "=m" ( (prev)->context->esp), \
-		[prev_ip] "=m" ( (prev)->context->eip), \
-		"=a" (last), \
-		"=b" (ebx), "=c" (ecx), "=d" (edx), \
-		"=S" (esi), "=D" (edi) \
-		:[next_sp]  "m" ( (next)->context->esp), \
-		[next_ip]  "m" ( (next)->context->eip), \
-		[prev]     "a" (prev), \
-		[next]     "d" (next) \
-		: "memory"); \
-	} while(0)
+    do { \
+        uint32_t ebx, ecx, edx, esi, edi; \
+        __asm__ volatile ( \
+        "pushfl\n\t" \
+        "pushl %%ebp\n\t" \
+        "movl %%esp,%[prev_sp]\n\t" \
+        "movl %[next_sp],%%esp\n\t" \
+        "movl $1f,%[prev_ip]\n\t" \
+        "pushl %[next_ip]\n\t" \
+        "jmp __switch_to\n" \
+        "1:\n\t" \
+        "popl %%ebp\n\t" \
+        "popfl\n" \
+        :[prev_sp] "=m" ( (prev)->context->esp), \
+        [prev_ip] "=m" ( (prev)->context->eip), \
+        "=a" (last), \
+        "=b" (ebx), "=c" (ecx), "=d" (edx), \
+        "=S" (esi), "=D" (edi) \
+        :[next_sp]  "m" ( (next)->context->esp), \
+        [next_ip]  "m" ( (next)->context->eip), \
+        [prev]     "a" (prev), \
+        [next]     "d" (next) \
+        : "memory"); \
+    } while(0)
 
 inline void print_curr(task_context_t * curr) {
-	printk_debug("curr 0x%08X\t", curr);
-	printk_debug("curr->eip 0x%08X\t", curr->eip);
-	printk_debug("curr->esp 0x%08X\t", curr->esp);
-	printk_debug("curr->ebp 0x%08X\t", curr->ebp);
-	printk_debug("curr->ebx 0x%08X\t", curr->ebx);
-	printk_debug("curr->ecx 0x%08X\t", curr->ecx);
-	printk_debug("curr->edx 0x%08X\t", curr->edx);
-	printk_debug("curr->esi 0x%08X\t", curr->esi);
-	printk_debug("curr->edi 0x%08X\n", curr->edi);
-	return;
+    printk_debug("curr 0x%08X\t", curr);
+    printk_debug("curr->eip 0x%08X\t", curr->eip);
+    printk_debug("curr->esp 0x%08X\t", curr->esp);
+    printk_debug("curr->ebp 0x%08X\t", curr->ebp);
+    printk_debug("curr->ebx 0x%08X\t", curr->ebx);
+    printk_debug("curr->ecx 0x%08X\t", curr->ecx);
+    printk_debug("curr->edx 0x%08X\t", curr->edx);
+    printk_debug("curr->esi 0x%08X\t", curr->esi);
+    printk_debug("curr->edi 0x%08X\n", curr->edi);
+    return;
 }
 
 inline void print_next(task_context_t * next) {
-	printk_debug("next 0x%08X\t", next);
-	printk_debug("next->eip 0x%08X\t", next->eip);
-	printk_debug("next->esp 0x%08X\t", next->esp);
-	printk_debug("next->ebp 0x%08X\t", next->ebp);
-	printk_debug("next->ebx 0x%08X\t", next->ebx);
-	printk_debug("next->ecx 0x%08X\t", next->ecx);
-	printk_debug("next->edx 0x%08X\t", next->edx);
-	printk_debug("next->esi 0x%08X\t", next->esi);
-	printk_debug("next->edi 0x%08X\n", next->edi);
-	return;
+    printk_debug("next 0x%08X\t", next);
+    printk_debug("next->eip 0x%08X\t", next->eip);
+    printk_debug("next->esp 0x%08X\t", next->esp);
+    printk_debug("next->ebp 0x%08X\t", next->ebp);
+    printk_debug("next->ebx 0x%08X\t", next->ebx);
+    printk_debug("next->ecx 0x%08X\t", next->ecx);
+    printk_debug("next->edx 0x%08X\t", next->edx);
+    printk_debug("next->esi 0x%08X\t", next->esi);
+    printk_debug("next->edi 0x%08X\n", next->edi);
+    return;
 }
 
 #ifdef __cplusplus
