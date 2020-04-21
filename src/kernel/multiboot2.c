@@ -51,25 +51,21 @@ void print_MULTIBOOT_TAG_TYPE_BOOTDEV(multiboot_tag_t * tag) {
 void print_MULTIBOOT_TAG_TYPE_MMAP(multiboot_tag_t * tag) {
 	mmap_entries = ( (struct multiboot_tag_mmap *)tag)->entries;
 	mmap_tag = tag;
-#if DEBUG_LOCAL
+#ifdef DEBUG_LOCAL
 	multiboot_memory_map_entry_t * mmap;
 	mmap = ( (struct multiboot_tag_mmap *)tag)->entries;
 	printk_info("mmap\n");
 	for( ; (uint8_t *)mmap < (uint8_t *)tag + tag->size ;
 	    mmap = (multiboot_memory_map_entry_t *)( (uint32_t)mmap + ( (struct multiboot_tag_mmap *)tag)->entry_size) ) {
-		printk_info("base_addr = 0x%X%X, length = 0x%X%X, type = 0x%X\n",
-		    (unsigned)(mmap->addr >> 32),// high
-		    (unsigned)(mmap->addr & 0xffffffff),// low
-		    (unsigned)(mmap->len >> 32),// high
-		    (unsigned)(mmap->len & 0xffffffff),// low
-		    (unsigned)mmap->type);
+		printk_info("base_addr = 0x%X, length = 0x%X, type = 0x%X\n",
+		    (unsigned)(mmap->addr), (unsigned)(mmap->len), (unsigned)mmap->type);
 	}
 #endif
 	return;
 }
 
 void print_MULTIBOOT_TAG_TYPE_ELF_SECTIONS(multiboot_tag_t * tag __UNUSED__) {
-#if DEBUG_LOCAL
+#ifdef DEBUG_LOCAL
 	printk_info("Elf type 0x%X, Size 0x%X, num 0x%X, entsize 0x%X, shndx 0x%X.\n",
 	    ( (struct multiboot_tag_elf_sections *)tag)->type,
 	    ( (struct multiboot_tag_elf_sections *)tag)->size,

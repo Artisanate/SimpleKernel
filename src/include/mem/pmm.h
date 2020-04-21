@@ -47,7 +47,56 @@ extern "C" {
 #define PMM_PAGE_SIZE    (0x1000UL)
 #endif
 
-#define PMM_PAGE_MAX_SIZE (PMM_MAX_SIZE / PMM_PAGE_SIZE)// 物理页数量 131072, 0x20000
+// 物理页数量 131072, 0x20000
+#define PMM_PAGE_MAX_SIZE (PMM_MAX_SIZE / PMM_PAGE_SIZE)
+
+// 内存页类型
+// ZONE_DMA	     < 16 MB	ISA DMA capable memory
+// 之所以需要单独管理 DMA 的物理页面，是因为 DMA 使用物理地址访问内存，
+// 不经过 MMU，并且需要连续的缓冲区，所以为了能够提供物理上连续的缓冲区，必须从物理地址空间专门划分一段区域用于DMA
+#define ZONE_DMA 0
+// 16 MB
+#define ZONE_NORMAL_ADDR     (0x1000000UL)
+// ZONE_NORMAL	 16-896 MB	direct mapped by the kernel
+// 16M ~896M，该区域的物理页面是内核能够直接使用的。
+#define ZONE_NORMAL  1
+// ZONE_HIGHMEM	 > 896 MB	only page cache and user processes
+// 896M ~结束，该区域即为高端内存，内核不能直接使用。
+#define ZONE_HIGHMEM  2
+// 896 MB
+#define ZONE_HIGHMEM_ADDR    (0x38000000UL)
+
+// 内存区域描述
+typedef
+    struct mem_zone_t {
+    // 区域起点
+    uint64_t		zone_start_address;
+    // 区域终点
+    uint64_t		zone_end_address;
+    // 区域长度
+    uint64_t		zone_length;
+    // 区域属性
+    uint32_t		attribute;
+    // 区域已使用页数量
+    uint64_t		page_using_count;
+    // 区域空闲页数量
+    uint64_t		page_free_count;
+} mem_zone_t;
+
+// 物理页信息
+typedef
+    struct pmm_page_t {
+    // 所在区域信息
+    mem_zone_t *	zone_info;
+    // 指向的物理地址
+    ptr_t		phy_addr;
+    // 属性
+    uint32_t		attribute;
+    // 被引用次数
+    uint64_t		reference_count;
+    // 存在时间
+    uint64_t		age;
+} pmm_page_t;
 
 // A common problem is getting garbage data when trying to use a value defined in a linker script.
 // This is usually because they're dereferencing the symbol. A symbol defined in a linker script (e.g. _ebss = .;)
@@ -77,16 +126,16 @@ extern multiboot_mmap_tag_t * mmap_tag;
 // 内存管理结构体
 typedef
     struct pmm_manage {
-	// 管理算法的名称
-	const char *      name;
-	// 初始化
-	void (* pmm_manage_init)(ptr_t page_start, size_t page_count);
-	// 申请物理内存，单位为 Byte，以页为单位对齐
-	ptr_t (* pmm_manage_alloc)(size_t bytes);
-	// 释放内存页
-	void (* pmm_manage_free)(ptr_t addr_start, size_t bytes);
-	// 返回当前可用内存页数量
-	size_t (* pmm_manage_free_pages_count)(void);
+    // 管理算法的名称
+    const char *      name;
+    // 初始化
+    void (* pmm_manage_init)(ptr_t page_start, size_t page_count);
+    // 申请物理内存，单位为 Byte，以页为单位对齐
+    ptr_t (* pmm_manage_alloc)(size_t bytes);
+    // 释放内存页
+    void (* pmm_manage_free)(ptr_t addr_start, size_t bytes);
+    // 返回当前可用内存页数量
+    size_t (* pmm_manage_free_pages_count)(void);
 } pmm_manage_t;
 
 // 物理内存初始化

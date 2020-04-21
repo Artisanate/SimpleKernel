@@ -14,17 +14,21 @@
 #define E820_NVS            4
 #define E820_UNUSABLE       5
 
+typedef uint64_t e820_addr_t;
+typedef uint64_t e820_len_t;
+typedef uint32_t e820_type_t;
+
 typedef
     struct e820entry {
-	uint64_t	addr;
-	uint64_t	length;
-	uint32_t	type;
+    e820_addr_t		addr;
+    e820_len_t		length;
+    e820_type_t		type;
 } __attribute__( (packed) ) e820entry_t;
 
 typedef
     struct e820map {
-	uint32_t		nr_map;
-	e820entry_t		map[E820_MAX];
+    size_t		nr_map;
+    e820entry_t		map[E820_MAX];
 } e820map_t;
 
 #endif /* _E820_H_ */

@@ -25,70 +25,74 @@ static const pmm_manage_t * pmm_manager  = &firstfit_manage;
 // 从 GRUB 读取物理内存信息
 static void pmm_get_ram_info(e820map_t * e820map);
 void pmm_get_ram_info(e820map_t * e820map) {
-	for( ; (uint8_t *)mmap_entries < (uint8_t *)mmap_tag + mmap_tag->size ;
-	    mmap_entries = (multiboot_memory_map_entry_t *)( (uint32_t)mmap_entries
-	    + ( (struct multiboot_tag_mmap *)mmap_tag)->entry_size) ) {
-		// 如果是可用内存
-		if( (unsigned)mmap_entries->type == MULTIBOOT_MEMORY_AVAILABLE
-		    && (unsigned)(mmap_entries->addr & 0xFFFFFFFF) == 0x100000) {
-			e820map->map[e820map->nr_map].addr = mmap_entries->addr;
-			e820map->map[e820map->nr_map].length = mmap_entries->len;
-			e820map->map[e820map->nr_map].type = mmap_entries->type;
-			e820map->nr_map++;
-		}
-	}
-	return;
+    for( ; (uint8_t *)mmap_entries < (uint8_t *)mmap_tag + mmap_tag->size ;
+        mmap_entries = (multiboot_memory_map_entry_t *)( (uint32_t)mmap_entries
+        + ( (struct multiboot_tag_mmap *)mmap_tag)->entry_size) ) {
+        // 如果是可用内存
+        if( (unsigned)mmap_entries->type == MULTIBOOT_MEMORY_AVAILABLE
+            && (unsigned)(mmap_entries->addr & 0xFFFFFFFF) == 0x100000) {
+            e820map->map[e820map->nr_map].addr = mmap_entries->addr;
+            e820map->map[e820map->nr_map].length = mmap_entries->len;
+            e820map->map[e820map->nr_map].type = mmap_entries->type;
+            e820map->nr_map++;
+        }
+    }
+    return;
 }
 
 void pmm_phy_init(e820map_t * e820map) {
-	// 计算物理页总数
-	for(uint32_t i = 0 ; i < e820map->nr_map ; i++) {
-		for(uint64_t addr = e820map->map[i].addr ;
-		    addr < e820map->map[i].addr + e820map->map[i].length ;
-		    addr += PMM_PAGE_SIZE) {
-			phy_pages_count++;
-		}
-	}
-	return;
+    // 计算物理页总数
+    for(uint32_t i = 0 ; i < e820map->nr_map ; i++) {
+        for(e820_addr_t addr = e820map->map[i].addr ;
+            addr < e820map->map[i].addr + e820map->map[i].length ;
+            addr += PMM_PAGE_SIZE) {
+            phy_pages_count++;
+
+
+
+
+        }
+    }
+    return;
 }
 
 void pmm_mamage_init(e820map_t * e820map) {
-	// 因为只有一个可用内存区域，所以直接传递
-	pmm_manager->pmm_manage_init( (ptr_t)e820map->map[0].addr, phy_pages_count);
-	return;
+    // 因为只有一个可用内存区域，所以直接传递
+    pmm_manager->pmm_manage_init( (ptr_t)e820map->map[0].addr, phy_pages_count);
+    return;
 }
 
 void pmm_init() {
-	bool intr_flag = false;
-	local_intr_store(intr_flag);
-	{
-		e820map_t e820map;
-		bzero(&e820map, sizeof(e820map_t) );
-		pmm_get_ram_info(&e820map);
-		pmm_phy_init(&e820map);
-		pmm_mamage_init(&e820map);
+    bool intr_flag = false;
+    local_intr_store(intr_flag);
+    {
+        e820map_t e820map;
+        bzero(&e820map, sizeof(e820map_t) );
+        pmm_get_ram_info(&e820map);
+        pmm_phy_init(&e820map);
+        pmm_mamage_init(&e820map);
 
-		printk_info("pmm_init\n");
-		printk_info("phy_pages_count: %d\n", phy_pages_count);
-		printk_info("phy_pages_allow_count: %d\n", pmm_free_pages_count() );
-	}
-	local_intr_restore(intr_flag);
-	return;
+        printk_info("pmm_init\n");
+        printk_info("phy_pages_count: %d\n", phy_pages_count);
+        printk_info("phy_pages_allow_count: %d\n", pmm_free_pages_count() );
+    }
+    local_intr_restore(intr_flag);
+    return;
 }
 
 ptr_t pmm_alloc(size_t byte) {
-	ptr_t page;
-	page = pmm_manager->pmm_manage_alloc(byte);
-	return page;
+    ptr_t page;
+    page = pmm_manager->pmm_manage_alloc(byte);
+    return page;
 }
 
 void pmm_free(ptr_t addr, size_t byte) {
-	pmm_manager->pmm_manage_free(addr, byte);
-	return;
+    pmm_manager->pmm_manage_free(addr, byte);
+    return;
 }
 
 size_t pmm_free_pages_count(void) {
-	return pmm_manager->pmm_manage_free_pages_count();
+    return pmm_manager->pmm_manage_free_pages_count();
 }
 
 #ifdef __cplusplus
