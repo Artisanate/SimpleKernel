@@ -44,7 +44,7 @@ void kernel_main(ptr_t magic, ptr_t addr) {
         // task_init();
         // 调度初始化
         // sched_init();
-        showinfo();
+        // showinfo();
         // test();
 
     }

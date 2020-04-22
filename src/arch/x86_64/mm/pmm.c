@@ -33,30 +33,8 @@ void pmm_get_ram_info(e820map_t * e820map) {
         e820map->map[e820map->nr_map].length = (e820_len_t)( (multiboot_memory_map_entry_t *)entry)->len;
         e820map->map[e820map->nr_map].type = (e820_type_t)( (multiboot_memory_map_entry_t *)entry)->type;
         assert(e820map->nr_map < E820_MAX, "pmm.c: e820map->nr_map bigger than E820_MAX.");
-        printk_debug("addr = 0x%X, length = 0x%X, type = 0x%X\n",
-            (uint32_t)(e820map->map[e820map->nr_map].addr),
-            (uint32_t)(e820map->map[e820map->nr_map].length),
-            e820map->map[e820map->nr_map].type);
     }
     return;
-
-    // for( ; (uint8_t *)mmap_entries < (uint8_t *)mmap_tag + mmap_tag->size ;
-    //     mmap_entries = (multiboot_memory_map_entry_t *)( (uint32_t)mmap_entries
-    //     + ( (struct multiboot_tag_mmap *)mmap_tag)->entry_size) ) {
-    //     // 如果是可用内存
-    //     if( (unsigned)mmap_entries->type == MULTIBOOT_MEMORY_AVAILABLE
-    //         && (unsigned)(mmap_entries->addr & 0xFFFFFFFF) == 0x100000) {
-    //         e820map->map[e820map->nr_map].addr = (e820_addr_t)mmap_entries->addr;
-    //         e820map->map[e820map->nr_map].length = (e820_len_t)mmap_entries->len;
-    //         e820map->map[e820map->nr_map].type = (e820_type_t)mmap_entries->type;
-    //         printk_debug("addr = 0x%X, length = 0x%X, type = 0x%X\n",
-    //             (uint32_t)(e820map->map[e820map->nr_map].addr),
-    //             (uint32_t)(e820map->map[e820map->nr_map].length),
-    //             e820map->map[e820map->nr_map].type);
-    //         e820map->nr_map++;
-    //     }
-    // }
-    // return;
 }
 
 // 物理页信息保存地址
@@ -98,8 +76,6 @@ void pmm_phy_init(e820map_t * e820map) {
     ptr_t end_addr = (ptr_t)NULL;
     // 首先计算可用物理页总数
     for(size_t i = 0 ; i < e820map->nr_map ; i++) {
-        // printk_debug("addr = 0x%X, length = 0x%X, type = 0x%X\n",
-        // e820map->map[i].addr, e820map->map[i].length, e820map->map[i].type);
         if(e820map->map[i].type == MULTIBOOT_MEMORY_AVAILABLE
             && (e820map->map[i].addr & 0xFFFFFFFF) == 0x100000) {
             // printk_debug("1\n");
@@ -114,7 +90,7 @@ void pmm_phy_init(e820map_t * e820map) {
     pmm_pages_size = sizeof(pmm_page_t) * phy_pages_count;
     bzero(pmm_pages, pmm_pages_size);
     end_addr = start_addr + (ptr_t)(PMM_PAGE_SIZE * phy_pages_count);
-    printk_debug("start_addr = 0x%X, end_addr = 0x%X\n", start_addr, end_addr);
+    assert(start_addr == 0x100000, "pmm.c: start_addr != 0x100000.");
     // 按照地址设置信息
     size_t i = 0;
     for(ptr_t addr = start_addr ; addr < end_addr ; addr += PMM_PAGE_SIZE) {
@@ -142,30 +118,48 @@ void pmm_phy_init(e820map_t * e820map) {
             pmm_pages[i].age = 0;
         }
         i++;
-        assert(i < phy_pages_count, "pmm.c: i bigger than phy_page_count.");
+        assert(i <= phy_pages_count, "pmm.c: i bigger than phy_page_count.");
     }
 
     // 设置 zone 信息
     for(i = 0 ; i < phy_pages_count ; i++) {
         // dma 区域
         if(pmm_pages[i].phy_addr < ZONE_NORMAL_ADDR) {
-            mem_zone_dma.zone_end_address = pmm_pages[i].phy_addr;
-            mem_zone_dma.zone_length++;
+            mem_zone_dma.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
+            mem_zone_dma.zone_length += PMM_PAGE_SIZE;
+            // 补齐未统计的低端 1MB
+            if(mem_zone_dma.zone_length == 0xF00000) {
+                mem_zone_dma.zone_length += 0x100000;
+            }
             mem_zone_dma.page_free_count++;
         }
         // normal 区域
         else if(pmm_pages[i].phy_addr < ZONE_HIGHMEM_ADDR) {
-            mem_zone_normal.zone_end_address = pmm_pages[i].phy_addr;
-            mem_zone_normal.zone_length++;
+            mem_zone_normal.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
+            mem_zone_normal.zone_length += PMM_PAGE_SIZE;
             mem_zone_normal.page_free_count++;
         }
         // highmem 区域
         else if(pmm_pages[i].phy_addr > ZONE_HIGHMEM_ADDR) {
-            mem_zone_high.zone_end_address = pmm_pages[i].phy_addr;
-            mem_zone_high.zone_length++;
+            mem_zone_high.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
+            mem_zone_high.zone_length += PMM_PAGE_SIZE;
             mem_zone_high.page_free_count++;
         }
     }
+
+    // 长度为 16MB
+    assert(mem_zone_dma.zone_length == ZONE_NORMAL_ADDR - ZONE_DMA_ADDR, "pmm.c: mem_zone_dma.zone_length != ZONE_NORMAL_ADDR - ZONE_DMA_ADDR.");
+    // 结束地址为 16MB
+    assert(mem_zone_dma.zone_end_address == ZONE_NORMAL_ADDR, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR.");
+
+    // 长度为可用物理内存 - 分给 DMA 的 15MB
+    assert(mem_zone_normal.zone_length == phy_pages_count * PMM_PAGE_SIZE - 0xF00000, "pmm.c: mem_zone_normal.zone_length != (phy_pages_count * PMM_PAGE_SIZE) - 0x100000")
+    // 结束地址为 开始地址 + 长度
+    assert(mem_zone_normal.zone_end_address == ZONE_NORMAL_ADDR + mem_zone_normal.zone_length, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR + mem_zone_normal.zone_length.");
+
+    // printk_debug("mem_zone_high.zone_start_address = 0x%X, mem_zone_high.zone_end_address = 0x%X ", (uint32_t)mem_zone_high.zone_start_address, (uint32_t)mem_zone_high.zone_end_address);
+    // printk_debug("mem_zone_high.zone_length = 0x%X\n", (uint32_t)mem_zone_high.zone_length);
+
     return;
 }
 
