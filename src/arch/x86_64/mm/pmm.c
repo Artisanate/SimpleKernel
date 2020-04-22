@@ -25,34 +25,38 @@ static const pmm_manage_t * pmm_manager  = &firstfit_manage;
 // 从 GRUB 读取物理内存信息
 static void pmm_get_ram_info(e820map_t * e820map);
 void pmm_get_ram_info(e820map_t * e820map) {
-    // ptr_t entry = (ptr_t)mmap_entries;
-    // ptr_t tag = (ptr_t)mmap_tag;
-    // for(e820map->nr_map = 0 ; entry < tag + mmap_tag->size ;
-    //     entry += (ptr_t)( (multiboot_tag_mmap_t *)mmap_tag)->entry_size, e820map->nr_map++) {
-    //     e820map->map[e820map->nr_map].addr = ( (multiboot_memory_map_entry_t *)entry)->addr;
-    //     e820map->map[e820map->nr_map].length = ( (multiboot_memory_map_entry_t *)entry)->len;
-    //     e820map->map[e820map->nr_map].type = ( (multiboot_memory_map_entry_t *)entry)->type;
-    //     assert(e820map->nr_map < E820_MAX, "pmm.c: e820map->nr_map bigger than E820_MAX.");
-    //     printk_debug("addr = 0x%X, length = 0x%X, type = 0x%X\n",
-    //         e820map->map[e820map->nr_map].addr, e820map->map[e820map->nr_map].length, e820map->map[e820map->nr_map].type);
-    // }
-    // return;
-
-    for( ; (uint8_t *)mmap_entries < (uint8_t *)mmap_tag + mmap_tag->size ;
-        mmap_entries = (multiboot_memory_map_entry_t *)( (uint32_t)mmap_entries
-        + ( (struct multiboot_tag_mmap *)mmap_tag)->entry_size) ) {
-        // 如果是可用内存
-        if( (unsigned)mmap_entries->type == MULTIBOOT_MEMORY_AVAILABLE
-            && (unsigned)(mmap_entries->addr & 0xFFFFFFFF) == 0x100000) {
-            e820map->map[e820map->nr_map].addr = mmap_entries->addr;
-            e820map->map[e820map->nr_map].length = mmap_entries->len;
-            e820map->map[e820map->nr_map].type = mmap_entries->type;
-            printk_debug("addr = 0x%X, length = 0x%X, type = 0x%X\n",
-                e820map->map[e820map->nr_map].addr, e820map->map[e820map->nr_map].length, e820map->map[e820map->nr_map].type);
-            e820map->nr_map++;
-        }
+    ptr_t entry = (ptr_t)mmap_entries;
+    ptr_t tag = (ptr_t)mmap_tag;
+    for(e820map->nr_map = 0 ; entry < tag + mmap_tag->size ;
+        entry += (ptr_t)( (multiboot_tag_mmap_t *)mmap_tag)->entry_size, e820map->nr_map++) {
+        e820map->map[e820map->nr_map].addr = (e820_addr_t)( (multiboot_memory_map_entry_t *)entry)->addr;
+        e820map->map[e820map->nr_map].length = (e820_len_t)( (multiboot_memory_map_entry_t *)entry)->len;
+        e820map->map[e820map->nr_map].type = (e820_type_t)( (multiboot_memory_map_entry_t *)entry)->type;
+        assert(e820map->nr_map < E820_MAX, "pmm.c: e820map->nr_map bigger than E820_MAX.");
+        printk_debug("addr = 0x%X, length = 0x%X, type = 0x%X\n",
+            (uint32_t)(e820map->map[e820map->nr_map].addr),
+            (uint32_t)(e820map->map[e820map->nr_map].length),
+            e820map->map[e820map->nr_map].type);
     }
     return;
+
+    // for( ; (uint8_t *)mmap_entries < (uint8_t *)mmap_tag + mmap_tag->size ;
+    //     mmap_entries = (multiboot_memory_map_entry_t *)( (uint32_t)mmap_entries
+    //     + ( (struct multiboot_tag_mmap *)mmap_tag)->entry_size) ) {
+    //     // 如果是可用内存
+    //     if( (unsigned)mmap_entries->type == MULTIBOOT_MEMORY_AVAILABLE
+    //         && (unsigned)(mmap_entries->addr & 0xFFFFFFFF) == 0x100000) {
+    //         e820map->map[e820map->nr_map].addr = (e820_addr_t)mmap_entries->addr;
+    //         e820map->map[e820map->nr_map].length = (e820_len_t)mmap_entries->len;
+    //         e820map->map[e820map->nr_map].type = (e820_type_t)mmap_entries->type;
+    //         printk_debug("addr = 0x%X, length = 0x%X, type = 0x%X\n",
+    //             (uint32_t)(e820map->map[e820map->nr_map].addr),
+    //             (uint32_t)(e820map->map[e820map->nr_map].length),
+    //             e820map->map[e820map->nr_map].type);
+    //         e820map->nr_map++;
+    //     }
+    // }
+    // return;
 }
 
 // 物理页信息保存地址
@@ -99,7 +103,7 @@ void pmm_phy_init(e820map_t * e820map) {
         if(e820map->map[i].type == MULTIBOOT_MEMORY_AVAILABLE
             && (e820map->map[i].addr & 0xFFFFFFFF) == 0x100000) {
             // printk_debug("1\n");
-            start_addr = e820map->map[i].addr;
+            start_addr = (ptr_t)e820map->map[i].addr;
             for(e820_addr_t addr = e820map->map[i].addr ;
                 addr < e820map->map[i].addr + e820map->map[i].length ;
                 addr += PMM_PAGE_SIZE) {
@@ -109,7 +113,8 @@ void pmm_phy_init(e820map_t * e820map) {
     }
     pmm_pages_size = sizeof(pmm_page_t) * phy_pages_count;
     bzero(pmm_pages, pmm_pages_size);
-    end_addr = start_addr + (ptr_t)PMM_PAGE_SIZE * phy_pages_count;
+    end_addr = start_addr + (ptr_t)(PMM_PAGE_SIZE * phy_pages_count);
+    printk_debug("start_addr = 0x%X, end_addr = 0x%X\n", start_addr, end_addr);
     // 按照地址设置信息
     size_t i = 0;
     for(ptr_t addr = start_addr ; addr < end_addr ; addr += PMM_PAGE_SIZE) {

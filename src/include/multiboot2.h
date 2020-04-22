@@ -188,7 +188,6 @@ struct multiboot_tag {
     multiboot_uint32_t		size;
 };
 typedef struct multiboot_tag multiboot_tag_t;
-typedef struct multiboot_tag multiboot_mmap_tag_t;
 
 struct multiboot_tag_string {
     multiboot_uint32_t		type;
@@ -226,6 +225,7 @@ struct multiboot_tag_mmap {
     multiboot_uint32_t		entry_version;
     struct multiboot_mmap_entry entries[0];
 };
+typedef struct multiboot_tag_mmap multiboot_tag_mmap_t;
 
 struct multiboot_vbe_info_block {
     multiboot_uint8_t        external_specification[512];
@@ -349,7 +349,7 @@ void print_MULTIBOOT_TAG_TYPE_ELF_SECTIONS(struct multiboot_tag * tag);
 void print_MULTIBOOT_TAG_TYPE_APM(struct multiboot_tag * tag);
 void print_MULTIBOOT_TAG_TYPE_LOAD_BASE_ADDR(struct multiboot_tag * tag);
 multiboot_memory_map_entry_t * mmap_entries;
-multiboot_mmap_tag_t * mmap_tag;
+multiboot_tag_t * mmap_tag;
 
 #endif /*  ! ASM_FILE */
 
