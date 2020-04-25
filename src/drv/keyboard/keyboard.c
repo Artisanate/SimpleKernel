@@ -16,7 +16,7 @@ extern "C" {
 #include "sync.hpp"
 #include "include/keyboard.h"
 
-static uint8_t keymap[NR_SCAN_CODES * MAP_COLS] = {
+static uint8_t keymap[MAP_LINES * MAP_COLS] = {
     /* scan-code			!Shift		Shift		E0 XX	*/
     /* ==================================================================== */
     /* 0x00 - none	*/0,      0,      0,
