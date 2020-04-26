@@ -156,7 +156,7 @@ typedef struct {
 
 // ELF 信息
 typedef
-    struct elf_t {
+    struct elf {
     Elf32_Sym *		symtab;
     uint32_t		symtabsz;
     const char *	strtab;

@@ -94,7 +94,7 @@ typedef
 
 // 中断描述符
 typedef
-    struct idt_entry_t {
+    struct idt_entry {
     uint16_t		base_low; // 中断处理函数地址 15～0 位
     uint16_t		selector;     // 目标代码段描述符选择子
     uint8_t		zero;  // 置 0 段
@@ -104,7 +104,7 @@ typedef
 
 // IDTR
 typedef
-    struct idt_ptr_t {
+    struct idt_ptr {
     uint16_t		limit; // 限长
     uint32_t		base;  // 基址
 } __attribute__( (packed) ) idt_ptr_t;

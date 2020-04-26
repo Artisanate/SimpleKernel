@@ -69,7 +69,7 @@ extern "C" {
 
 // 内存区域描述
 typedef
-    struct mem_zone_t {
+    struct mem_zone {
     // 区域起点
     ptr_t		zone_start_address;
     // 区域终点
@@ -86,7 +86,7 @@ typedef
 
 // 物理页信息
 typedef
-    struct pmm_page_t {
+    struct pmm_page {
     // 所在区域信息
     mem_zone_t *	zone_info;
     // 指向的物理地址
@@ -103,6 +103,13 @@ typedef
     // firstfit 算法，有多少个连续页
     size_t		npages;
 } pmm_page_t;
+
+typedef
+    struct pmm_page_linkedlist {
+    pmm_page_t        pmm_page;
+    struct pmm_page_linkedlist * prev;
+    struct pmm_page_linkedlist * next;
+} pmm_page_linkedlist_t;
 
 // A common problem is getting garbage data when trying to use a value defined in a linker script.
 // This is usually because they're dereferencing the symbol. A symbol defined in a linker script (e.g. _ebss = .;)

@@ -29,13 +29,7 @@ pmm_manage_t firstfit_manage = {
     &free_pages_count
 };
 
-// 一个仅在这里使用的简单循环链表
-typedef
-    struct list_entry {
-    pmm_page_t        pmm_page;
-    struct list_entry *	next;
-    struct list_entry *	prev;
-} list_entry_t;
+typedef pmm_page_linkedlist_t list_entry_t;
 
 static inline void list_init_head(list_entry_t * list);
 
