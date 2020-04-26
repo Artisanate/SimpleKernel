@@ -71,11 +71,11 @@ extern "C" {
 typedef
     struct mem_zone_t {
     // 区域起点
-    uint64_t		zone_start_address;
+    ptr_t		zone_start_address;
     // 区域终点
-    uint64_t		zone_end_address;
+    ptr_t		zone_end_address;
     // 区域长度
-    uint64_t		zone_length;
+    ptr_t		zone_length;
     // 区域属性
     uint32_t		attribute;
     // 区域已使用页数量
@@ -94,9 +94,14 @@ typedef
     // 属性
     uint32_t		attribute;
     // 被引用次数
-    uint64_t		reference_count;
+    uint64_t		ref;
     // 存在时间
     uint64_t		age;
+    // 状态
+    uint32_t		flag;
+    // 以下是内存管理需要的数据
+    // firstfit 算法，有多少个连续页
+    size_t		npages;
 } pmm_page_t;
 
 // A common problem is getting garbage data when trying to use a value defined in a linker script.
@@ -130,7 +135,7 @@ typedef
     // 管理算法的名称
     const char *      name;
     // 初始化
-    void (* pmm_manage_init)(ptr_t page_start, size_t page_count);
+    void (* pmm_manage_init)(pmm_page_t * page_start, size_t page_count);
     // 申请物理内存，单位为 Byte，以页为单位对齐
     ptr_t (* pmm_manage_alloc)(size_t bytes);
     // 释放内存页
@@ -142,7 +147,7 @@ typedef
 // 物理内存初始化
 void pmm_phy_init(e820map_t * e820map);
 // 物理内存管理初始化
-void pmm_mamage_init(e820map_t * e820map);
+void pmm_mamage_init(pmm_page_t * page_start, size_t page_count);
 // 初始化内存管理
 void pmm_init(void);
 // 分配内存，单位为 byte，返回的是物理地址，以页为单位对齐

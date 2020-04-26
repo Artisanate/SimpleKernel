@@ -35,7 +35,7 @@ extern "C" {
 // Number of columns in keyma
 #define MAP_COLS        (0x03)
 // Number of scan codes (rows in keymap)
-#define MAP_LINES   (0x80)
+#define MAP_LINES       (0x80)
 
 // 8 位的键盘扫描码的接通码使用前7位
 // 其最高位置 1 即是其对应的断开码

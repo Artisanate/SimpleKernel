@@ -39,6 +39,8 @@ void pmm_get_ram_info(e820map_t * e820map) {
 
 // 物理页信息保存地址
 static pmm_page_t * pmm_pages = NULL;
+// 物理页信息大小
+static size_t pmm_pages_size = 0;
 
 static mem_zone_t mem_zone_dma = {
     .zone_start_address  = ZONE_DMA_ADDR,
@@ -68,10 +70,10 @@ static mem_zone_t mem_zone_high = {
 };
 
 void pmm_phy_init(e820map_t * e820map) {
+    // 这里假设最小物理地址为 512MB，没有考虑更小的情况
     // 位于内核结束后，大小为 sizeof(pmm_page_t) * phy_pages_count
     // 后面的操作是进行页对齐
     pmm_pages = (pmm_page_t *)( ( (ptr_t)(&kernel_end + PMM_PAGE_SIZE) & PMM_PAGE_MASK) );
-    size_t pmm_pages_size = 0;
     ptr_t start_addr = (ptr_t)NULL;
     ptr_t end_addr = (ptr_t)NULL;
     // 首先计算可用物理页总数
@@ -99,14 +101,14 @@ void pmm_phy_init(e820map_t * e820map) {
                 pmm_pages[i].zone_info = &mem_zone_dma;
                 pmm_pages[i].phy_addr = addr;
                 pmm_pages[i].attribute = 0;
-                pmm_pages[i].reference_count = 0;
+                pmm_pages[i].ref = 0;
                 pmm_pages[i].age = 0;
             }
             else {
                 pmm_pages[i].zone_info = &mem_zone_normal;
                 pmm_pages[i].phy_addr = addr;
                 pmm_pages[i].attribute = 0;
-                pmm_pages[i].reference_count = 0;
+                pmm_pages[i].ref = 0;
                 pmm_pages[i].age = 0;
             }
         }
@@ -114,7 +116,7 @@ void pmm_phy_init(e820map_t * e820map) {
             pmm_pages[i].zone_info = &mem_zone_high;
             pmm_pages[i].phy_addr = addr;
             pmm_pages[i].attribute = 0;
-            pmm_pages[i].reference_count = 0;
+            pmm_pages[i].ref = 0;
             pmm_pages[i].age = 0;
         }
         i++;
@@ -152,7 +154,7 @@ void pmm_phy_init(e820map_t * e820map) {
     // 结束地址为 16MB
     assert(mem_zone_dma.zone_end_address == ZONE_NORMAL_ADDR, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR.");
 
-    // 长度为可用物理内存 - 分给 DMA 的 15MB
+    // 长度为可用物理内存 - 分给 DMA 的 15MB(因为前 1MB 已经分出去了)
     assert(mem_zone_normal.zone_length == phy_pages_count * PMM_PAGE_SIZE - 0xF00000, "pmm.c: mem_zone_normal.zone_length != (phy_pages_count * PMM_PAGE_SIZE) - 0x100000")
     // 结束地址为 开始地址 + 长度
     assert(mem_zone_normal.zone_end_address == ZONE_NORMAL_ADDR + mem_zone_normal.zone_length, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR + mem_zone_normal.zone_length.");
@@ -163,9 +165,10 @@ void pmm_phy_init(e820map_t * e820map) {
     return;
 }
 
-void pmm_mamage_init(e820map_t * e820map) {
-    // 因为只有一个可用内存区域，所以直接传递
-    pmm_manager->pmm_manage_init( (ptr_t)e820map->map[0].addr, phy_pages_count);
+void pmm_mamage_init(pmm_page_t * page_start, size_t page_count) {
+    // 传递页指针与页数量
+    // 要注意在低 1MB 可能有已经被使用的内存
+    pmm_manager->pmm_manage_init(page_start, page_count);
     return;
 }
 
@@ -177,7 +180,7 @@ void pmm_init() {
         bzero(&e820map, sizeof(e820map_t) );
         pmm_get_ram_info(&e820map);
         pmm_phy_init(&e820map);
-        pmm_mamage_init(&e820map);
+        pmm_mamage_init(pmm_pages, phy_pages_count);
 
         printk_info("pmm_init\n");
         printk_info("phy_pages_count: %d\n", phy_pages_count);
