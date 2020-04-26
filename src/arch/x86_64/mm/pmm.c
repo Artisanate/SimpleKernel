@@ -69,6 +69,49 @@ static mem_zone_t mem_zone_high = {
     .page_free_count = 0,
 };
 
+static void set_zone_info(size_t page_count);
+void set_zone_info(size_t page_count) {
+    // 设置 zone 信息
+    for(size_t i = 0 ; i < page_count ; i++) {
+        // dma 区域
+        if(pmm_pages[i].phy_addr < ZONE_NORMAL_ADDR) {
+            mem_zone_dma.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
+            mem_zone_dma.zone_length += PMM_PAGE_SIZE;
+            // 补齐未统计的低端 1MB
+            if(mem_zone_dma.zone_length == 0xF00000) {
+                mem_zone_dma.zone_length += 0x100000;
+            }
+            mem_zone_dma.page_free_count++;
+        }
+        // normal 区域
+        else if(pmm_pages[i].phy_addr < ZONE_HIGHMEM_ADDR) {
+            mem_zone_normal.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
+            mem_zone_normal.zone_length += PMM_PAGE_SIZE;
+            mem_zone_normal.page_free_count++;
+        }
+        // highmem 区域
+        else if(pmm_pages[i].phy_addr > ZONE_HIGHMEM_ADDR) {
+            mem_zone_high.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
+            mem_zone_high.zone_length += PMM_PAGE_SIZE;
+            mem_zone_high.page_free_count++;
+        }
+    }
+
+    // 长度为 16MB
+    assert(mem_zone_dma.zone_length == ZONE_NORMAL_ADDR - ZONE_DMA_ADDR, "pmm.c: mem_zone_dma.zone_length != ZONE_NORMAL_ADDR - ZONE_DMA_ADDR.");
+    // 结束地址为 16MB
+    assert(mem_zone_dma.zone_end_address == ZONE_NORMAL_ADDR, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR.");
+
+    // 长度为可用物理内存 - 分给 DMA 的 15MB(因为前 1MB 已经分出去了)
+    assert(mem_zone_normal.zone_length == phy_pages_count * PMM_PAGE_SIZE - 0xF00000, "pmm.c: mem_zone_normal.zone_length != (phy_pages_count * PMM_PAGE_SIZE) - 0x100000")
+    // 结束地址为 开始地址 + 长度
+    assert(mem_zone_normal.zone_end_address == ZONE_NORMAL_ADDR + mem_zone_normal.zone_length, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR + mem_zone_normal.zone_length.");
+
+    // printk_debug("mem_zone_high.zone_start_address = 0x%X, mem_zone_high.zone_end_address = 0x%X ", (uint32_t)mem_zone_high.zone_start_address, (uint32_t)mem_zone_high.zone_end_address);
+    // printk_debug("mem_zone_high.zone_length = 0x%X\n", (uint32_t)mem_zone_high.zone_length);
+    return;
+}
+
 void pmm_phy_init(e820map_t * e820map) {
     // 这里假设最小物理地址为 512MB，没有考虑更小的情况
     // 位于内核结束后，大小为 sizeof(pmm_page_t) * phy_pages_count
@@ -80,7 +123,6 @@ void pmm_phy_init(e820map_t * e820map) {
     for(size_t i = 0 ; i < e820map->nr_map ; i++) {
         if(e820map->map[i].type == MULTIBOOT_MEMORY_AVAILABLE
             && (e820map->map[i].addr & 0xFFFFFFFF) == 0x100000) {
-            // printk_debug("1\n");
             start_addr = (ptr_t)e820map->map[i].addr;
             for(e820_addr_t addr = e820map->map[i].addr ;
                 addr < e820map->map[i].addr + e820map->map[i].length ;
@@ -122,46 +164,7 @@ void pmm_phy_init(e820map_t * e820map) {
         i++;
         assert(i <= phy_pages_count, "pmm.c: i bigger than phy_page_count.");
     }
-
-    // 设置 zone 信息
-    for(i = 0 ; i < phy_pages_count ; i++) {
-        // dma 区域
-        if(pmm_pages[i].phy_addr < ZONE_NORMAL_ADDR) {
-            mem_zone_dma.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
-            mem_zone_dma.zone_length += PMM_PAGE_SIZE;
-            // 补齐未统计的低端 1MB
-            if(mem_zone_dma.zone_length == 0xF00000) {
-                mem_zone_dma.zone_length += 0x100000;
-            }
-            mem_zone_dma.page_free_count++;
-        }
-        // normal 区域
-        else if(pmm_pages[i].phy_addr < ZONE_HIGHMEM_ADDR) {
-            mem_zone_normal.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
-            mem_zone_normal.zone_length += PMM_PAGE_SIZE;
-            mem_zone_normal.page_free_count++;
-        }
-        // highmem 区域
-        else if(pmm_pages[i].phy_addr > ZONE_HIGHMEM_ADDR) {
-            mem_zone_high.zone_end_address = pmm_pages[i].phy_addr + PMM_PAGE_SIZE;
-            mem_zone_high.zone_length += PMM_PAGE_SIZE;
-            mem_zone_high.page_free_count++;
-        }
-    }
-
-    // 长度为 16MB
-    assert(mem_zone_dma.zone_length == ZONE_NORMAL_ADDR - ZONE_DMA_ADDR, "pmm.c: mem_zone_dma.zone_length != ZONE_NORMAL_ADDR - ZONE_DMA_ADDR.");
-    // 结束地址为 16MB
-    assert(mem_zone_dma.zone_end_address == ZONE_NORMAL_ADDR, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR.");
-
-    // 长度为可用物理内存 - 分给 DMA 的 15MB(因为前 1MB 已经分出去了)
-    assert(mem_zone_normal.zone_length == phy_pages_count * PMM_PAGE_SIZE - 0xF00000, "pmm.c: mem_zone_normal.zone_length != (phy_pages_count * PMM_PAGE_SIZE) - 0x100000")
-    // 结束地址为 开始地址 + 长度
-    assert(mem_zone_normal.zone_end_address == ZONE_NORMAL_ADDR + mem_zone_normal.zone_length, "pmm.c: mem_zone_dma.zone_end_address != ZONE_NORMAL_ADDR + mem_zone_normal.zone_length.");
-
-    // printk_debug("mem_zone_high.zone_start_address = 0x%X, mem_zone_high.zone_end_address = 0x%X ", (uint32_t)mem_zone_high.zone_start_address, (uint32_t)mem_zone_high.zone_end_address);
-    // printk_debug("mem_zone_high.zone_length = 0x%X\n", (uint32_t)mem_zone_high.zone_length);
-
+    set_zone_info(phy_pages_count);
     return;
 }
 
