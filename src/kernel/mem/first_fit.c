@@ -29,7 +29,8 @@ pmm_manage_t firstfit_manage = {
     &free_pages_count
 };
 
-typedef pmm_page_linkedlist_t list_entry_t;
+// typedef pmm_page_linkedlist_t list_entry_t;
+typedef pmm_page_t list_entry_t;
 
 static inline void list_init_head(list_entry_t * list);
 
@@ -50,9 +51,6 @@ static inline list_entry_t * list_prev(list_entry_t * list);
 
 // 返回后面的的元素
 static inline list_entry_t * list_next(list_entry_t * list);
-
-// 返回 chunk_info
-static inline pmm_page_t * list_pmm_page(list_entry_t * list);
 
 // 初始化
 void list_init_head(list_entry_t * list) {
@@ -98,11 +96,6 @@ list_entry_t * list_next(list_entry_t * list) {
     return list->next;
 }
 
-// 返回 chunk_info
-pmm_page_t * list_pmm_page(list_entry_t * list) {
-    return &(list->pmm_page);
-}
-
 typedef
     struct firstfit_manage {
     // 物理内存起始地址
@@ -124,24 +117,14 @@ static firstfit_manage_t ff_manage;
 static list_entry_t * pmm_info = NULL;
 
 void init(pmm_page_t * page_start, size_t page_count) {
-    // 位于内核结束后，大小为 (PMM_MAX_SIZE / PMM_PAGE_SIZE)*sizeof(list_entry_t)
-    // 后面的操作是进行页对齐
-    pmm_info = (list_entry_t *)( ( (ptr_t)(&kernel_end + PMM_PAGE_SIZE) & PMM_PAGE_MASK) );
-    uint32_t pmm_info_size = (PMM_MAX_SIZE / PMM_PAGE_SIZE) * sizeof(list_entry_t);
-    bzero(pmm_info, pmm_info_size);
-
-    // 越过内核使用的内存
-    pmm_info->pmm_page.phy_addr = page_start[0].phy_addr;
-    pmm_info->pmm_page.npages = page_count;
-    pmm_info->pmm_page.ref = 0;
-    pmm_info->pmm_page.flag = FF_UNUSED;
-
+    pmm_info = (list_entry_t *)page_start;
+    // 设置可用页信息
     ff_manage.phy_page_count = page_count;
     ff_manage.phy_page_now_count = page_count;
-
+    // 设置管理内存起止
     ff_manage.pmm_addr_start = page_start[0].phy_addr;
     ff_manage.pmm_addr_end = page_start[page_count - 1].phy_addr;
-
+    // 设置链表信息
     ff_manage.free_list = pmm_info;
     list_init_head(ff_manage.free_list);
     return;
@@ -157,23 +140,23 @@ ptr_t alloc(size_t bytes) {
     list_entry_t * entry = ff_manage.free_list;
     while(entry != NULL) {
         // 查找符合长度且未使用的内存
-        if( (list_pmm_page(entry)->npages >= pages) && (list_pmm_page(entry)->flag == FF_UNUSED) ) {
+        if( (entry->npages >= pages) && (entry->flag == FF_UNUSED) ) {
             // 如果剩余大小足够
-            if(list_pmm_page(entry)->npages - pages > 1) {
+            if(entry->npages - pages > 1) {
                 // 添加新的链表项
                 list_entry_t * tmp = (list_entry_t *)(entry + sizeof(list_entry_t) );
-                list_pmm_page(tmp)->phy_addr = entry->pmm_page.phy_addr + pages * PMM_PAGE_SIZE;
-                list_pmm_page(tmp)->npages =  entry->pmm_page.npages - pages;
-                list_pmm_page(tmp)->ref = 0;
-                list_pmm_page(tmp)->flag = FF_UNUSED;
+                tmp->phy_addr = entry->phy_addr + pages * PMM_PAGE_SIZE;
+                tmp->npages =  entry->npages - pages;
+                tmp->ref = 0;
+                tmp->flag = FF_UNUSED;
                 list_add_after(entry, tmp);
             }
             // 不够的话直接分配
-            list_pmm_page(entry)->npages = pages;
-            list_pmm_page(entry)->ref = 1;
-            list_pmm_page(entry)->flag = FF_USED;
+            entry->npages = pages;
+            entry->ref = 1;
+            entry->flag = FF_USED;
             ff_manage.phy_page_now_count -= pages;
-            return list_pmm_page(entry)->phy_addr;
+            return entry->phy_addr;
         }
         // 没找到的话就查找下一个
         else if(list_next(entry) != ff_manage.free_list) {
@@ -197,25 +180,25 @@ void free(ptr_t addr_start, size_t bytes) {
     }
     // 首先找到地址对应的管理节点
     list_entry_t * entry = ff_manage.free_list;
-    while( ( (entry = list_next(entry) ) != ff_manage.free_list) && (list_pmm_page(entry)->phy_addr != addr_start) );
+    while( ( (entry = list_next(entry) ) != ff_manage.free_list) && (entry->phy_addr != addr_start) );
 
     // 释放所有页
-    list_pmm_page(entry)->ref = 0;
-    list_pmm_page(entry)->flag = FF_UNUSED;
+    entry->ref = 0;
+    entry->flag = FF_UNUSED;
 
     // 如果于相邻链表有空闲的则合并
     // 后面
-    if(entry->next != entry && list_pmm_page(entry->next)->flag == FF_UNUSED) {
+    if(entry->next != entry && (entry->next)->flag == FF_UNUSED) {
         list_entry_t * next = entry->next;
-        list_pmm_page(entry)->npages += list_pmm_page(next)->npages;
-        list_pmm_page(next)->npages = 0;
+        entry->npages += next->npages;
+        next->npages = 0;
         list_del(next);
     }
     // 前面
-    if(entry->prev != entry && list_pmm_page(entry->prev)->flag == FF_UNUSED) {
+    if(entry->prev != entry && (entry->prev)->flag == FF_UNUSED) {
         list_entry_t * prev = entry->prev;
-        list_pmm_page(prev)->npages += list_pmm_page(entry)->npages;
-        list_pmm_page(entry)->npages = 0;
+        prev->npages += entry->npages;
+        entry->npages = 0;
         list_del(entry);
     }
     ff_manage.phy_page_now_count += pages;

@@ -88,28 +88,30 @@ typedef
 typedef
     struct pmm_page {
     // 所在区域信息
-    mem_zone_t *	zone_info;
+    mem_zone_t *		zone_info;
     // 指向的物理地址
-    ptr_t		phy_addr;
+    ptr_t			phy_addr;
     // 属性
-    uint32_t		attribute;
+    uint32_t			attribute;
     // 被引用次数
-    uint64_t		ref;
+    uint64_t			ref;
     // 存在时间
-    uint64_t		age;
+    uint64_t			age;
     // 状态
-    uint32_t		flag;
+    uint32_t			flag;
     // 以下是内存管理需要的数据
     // firstfit 算法，有多少个连续页
-    size_t		npages;
+    size_t			npages;
+    struct pmm_page *		prev;
+    struct pmm_page *		next;
 } pmm_page_t;
 
-typedef
-    struct pmm_page_linkedlist {
-    pmm_page_t        pmm_page;
-    struct pmm_page_linkedlist * prev;
-    struct pmm_page_linkedlist * next;
-} pmm_page_linkedlist_t;
+// typedef
+//     struct pmm_page_linkedlist {
+//     pmm_page_t        pmm_page;
+//     struct pmm_page_linkedlist * prev;
+//     struct pmm_page_linkedlist * next;
+// } pmm_page_linkedlist_t;
 
 // A common problem is getting garbage data when trying to use a value defined in a linker script.
 // This is usually because they're dereferencing the symbol. A symbol defined in a linker script (e.g. _ebss = .;)

@@ -152,8 +152,8 @@ bool test_heap(void) {
 }
 
 bool test(void) {
-    // test_pmm();
-    test_vmm();
+    test_pmm();
+    // test_vmm();
     // test_libc();
     // test_heap();
     // test_task();

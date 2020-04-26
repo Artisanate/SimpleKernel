@@ -45,7 +45,7 @@ void kernel_main(ptr_t magic, ptr_t addr) {
         // 调度初始化
         // sched_init();
         // showinfo();
-        // test();
+        test();
 
     }
     local_intr_restore(intr_flag);
